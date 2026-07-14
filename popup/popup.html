@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Web Activity Tracker</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>Web Activity</h1>
+    <button id="clearBtn" class="clear-btn" title="Delete all tracked data">Clear data</button>
+  </header>
+
+  <!-- Summary tiles: totals across all pages -->
+  <section class="totals" aria-label="Totals">
+    <div class="tile">
+      <span class="tile-value" id="totalPages">0</span>
+      <span class="tile-label">Pages</span>
+    </div>
+    <div class="tile">
+      <span class="tile-value" id="totalClicks">0</span>
+      <span class="tile-label">Clicks</span>
+    </div>
+    <div class="tile">
+      <span class="tile-value" id="totalTime">0m</span>
+      <span class="tile-label">Time</span>
+    </div>
+  </section>
+
+  <!-- Tab switcher between the two views -->
+  <nav class="tabs" role="tablist">
+    <button class="tab active" id="tabPages" role="tab" aria-selected="true" aria-controls="pagesView">Pages</button>
+    <button class="tab" id="tabNav" role="tab" aria-selected="false" aria-controls="navView">Navigation</button>
+  </nav>
+
+  <!-- View 1: per-page stats, sorted by time spent -->
+  <section id="pagesView" role="tabpanel">
+    <ul class="page-list" id="pageList"></ul>
+    <p class="empty" id="pagesEmpty" hidden>No activity yet. Browse some pages, then come back!</p>
+  </section>
+
+  <!-- View 2: how you moved between pages -->
+  <section id="navView" role="tabpanel" hidden>
+    <ul class="nav-list" id="navList"></ul>
+    <p class="empty" id="navEmpty" hidden>No navigations recorded yet.</p>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>

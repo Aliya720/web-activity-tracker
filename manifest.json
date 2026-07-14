@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Web Activity Tracker",
+  "version": "1.0.0",
+  "description": "Tracks pages you visit, clicks per page, time spent, and how you navigate between pages. All data stays on your device.",
+
+  "permissions": ["storage", "tabs", "webNavigation"],
+
+  "host_permissions": ["http://*/*", "https://*/*"],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Web Activity Tracker"
+  }
+}

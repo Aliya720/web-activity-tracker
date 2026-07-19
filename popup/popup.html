@@ -8,7 +8,7 @@
 <body>
   <header class="header">
     <h1>Web Activity</h1>
-    <button id="clearBtn" class="clear-btn" title="Delete all tracked data">Clear data</button>
+    <button id="clearBtn" class="clear-btn" title="Delete all tracked data (bookmarks are kept)">Clear data</button>
   </header>
 
   <!-- Summary tiles: totals across all pages -->
@@ -27,13 +27,16 @@
     </div>
   </section>
 
-  <!-- Tab switcher between the two views -->
+  <!-- Tab switcher -->
   <nav class="tabs" role="tablist">
-    <button class="tab active" id="tabPages" role="tab" aria-selected="true" aria-controls="pagesView">Pages</button>
-    <button class="tab" id="tabNav" role="tab" aria-selected="false" aria-controls="navView">Navigation</button>
+    <button class="tab active" data-view="pagesView" role="tab" aria-selected="true">Pages</button>
+    <button class="tab" data-view="navView" role="tab" aria-selected="false">Trail</button>
+    <button class="tab" data-view="askView" role="tab" aria-selected="false">Ask</button>
+    <button class="tab" data-view="savedView" role="tab" aria-selected="false">Saved</button>
   </nav>
 
-  <!-- View 1: per-page stats, sorted by time spent -->
+  <!-- View 1: per-page stats, sorted by time spent. Titles open the page;
+       the star saves it into a bookmark group. -->
   <section id="pagesView" role="tabpanel">
     <ul class="page-list" id="pageList"></ul>
     <p class="empty" id="pagesEmpty" hidden>No activity yet. Browse some pages, then come back!</p>
@@ -45,6 +48,32 @@
     <p class="empty" id="navEmpty" hidden>No navigations recorded yet.</p>
   </section>
 
-  <script src="popup.js"></script>
+  <!-- View 3: the chatbot. Answers come from the local query engine —
+       nothing leaves the device. -->
+  <section id="askView" role="tabpanel" hidden>
+    <div class="chat-log" id="chatLog" aria-live="polite"></div>
+    <div class="chips" id="chips">
+      <button class="chip">What did I open most yesterday?</button>
+      <button class="chip">Summary of today</button>
+      <button class="chip">Where did I spend most time this week?</button>
+      <button class="chip">How many pages did I open today?</button>
+    </div>
+    <form id="askForm" class="ask-form">
+      <input id="askInput" type="text" placeholder="Ask about your browsing…" autocomplete="off" />
+      <button type="submit">Ask</button>
+    </form>
+  </section>
+
+  <!-- View 4: bookmarks, organized into user-named groups -->
+  <section id="savedView" role="tabpanel" hidden>
+    <button id="bookmarkCurrentBtn" class="bookmark-current">＋ Bookmark current page</button>
+    <div id="groupsContainer"></div>
+    <p class="empty" id="savedEmpty" hidden>Nothing saved yet. Use the ☆ on any page in the Pages tab.</p>
+  </section>
+
+  <!-- Shared datalist: existing group names, suggested wherever you pick a group -->
+  <datalist id="groupList"></datalist>
+
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

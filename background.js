@@ -31,9 +31,35 @@
 // navigations: [
 //   { from: string|null, to: string, type: string, redirect: boolean, time: number }
 // ]   // capped at MAX_NAVIGATIONS, newest last
+//
+// days: {
+//   "YYYY-MM-DD": {                    // one bucket per LOCAL calendar day
+//     "<url>": { title, visits, clicks, seconds }
+//   }
+// }   // the extension's "memory" — lets us answer "what did I do yesterday?"
+//     // Pruned to RETENTION_DAYS buckets.
+//
+// bookmarks: {
+//   "<group name>": [ { url, title, added } ]
+// }   // written only by the popup (user-curated, not tracked data)
 // ---------------------------------------------------------------------------
 
 const MAX_NAVIGATIONS = 500;
+
+// How many daily history buckets to keep. Older days are pruned so storage
+// can't grow forever (chrome.storage.local is capped at ~10 MB by default).
+const RETENTION_DAYS = 90;
+
+/**
+ * Today's date as a "YYYY-MM-DD" key, in the USER'S LOCAL timezone.
+ * Never use toISOString() for this — it converts to UTC, so late-evening
+ * browsing would land in "tomorrow's" bucket for anyone west of UTC.
+ */
+function localDayKey(timestamp = Date.now()) {
+  const d = new Date(timestamp);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 /**
  * Normalize a URL so "same page" always maps to the same storage key.
@@ -72,11 +98,23 @@ function enqueue(updateFn) {
   return writeQueue;
 }
 
-/** Read the pages object, let `mutate` change one page's entry, write it back. */
+/**
+ * Apply one mutation to a page's stats — in TWO places:
+ *  1. the all-time totals (`pages`), which the popup's Pages tab shows, and
+ *  2. today's bucket (`days[today]`), which powers the Ask chatbot's memory.
+ *
+ * Same mutate() function applied to both keeps them in sync by construction:
+ * there is no way to increment one and forget the other.
+ */
 function updatePage(rawUrl, mutate) {
   const url = normalizeUrl(rawUrl);
   return enqueue(async () => {
-    const { pages = {} } = await chrome.storage.local.get("pages");
+    const { pages = {}, days = {} } = await chrome.storage.local.get([
+      "pages",
+      "days",
+    ]);
+
+    // 1. All-time totals.
     const page = pages[url] ?? {
       title: "",
       visits: 0,
@@ -86,8 +124,26 @@ function updatePage(rawUrl, mutate) {
     };
     mutate(page);
     pages[url] = page;
-    await chrome.storage.local.set({ pages });
+
+    // 2. Today's bucket.
+    const today = localDayKey();
+    const bucket = days[today] ?? {};
+    const dayPage = bucket[url] ?? { title: "", visits: 0, clicks: 0, seconds: 0 };
+    mutate(dayPage);
+    bucket[url] = dayPage;
+    days[today] = bucket;
+
+    pruneOldDays(days);
+    await chrome.storage.local.set({ pages, days });
   });
+}
+
+/** Keep only the newest RETENTION_DAYS buckets. "YYYY-MM-DD" sorts correctly as a string. */
+function pruneOldDays(days) {
+  const keys = Object.keys(days).sort();
+  while (keys.length > RETENTION_DAYS) {
+    delete days[keys.shift()];
+  }
 }
 
 /** Append one navigation edge, trimming the log to MAX_NAVIGATIONS entries. */
@@ -188,8 +244,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "clearData") {
+    // Wipes tracked activity (including daily memory) but NOT bookmarks —
+    // those are user-curated content, not surveillance data.
     enqueue(async () => {
-      await chrome.storage.local.remove(["pages", "navigations"]);
+      await chrome.storage.local.remove(["pages", "navigations", "days"]);
     }).then(() => sendResponse({ ok: true }));
     return true; // keep the message channel open for the async sendResponse
   }
